@@ -18,10 +18,13 @@ public class UserServlet extends HttpServlet {
         UserService us = new UserService();
         RoleService rs = new RoleService();
         String action = request.getParameter("action");
+        int user_role_id = 0;
 
         try {
             List<User> users = us.getAll();
+            List<Role> roles = rs.getAll();
             request.setAttribute("users", users);
+            request.setAttribute("roles", roles);
             if (users.isEmpty()) {
                 request.setAttribute("message", "empty");
             }
@@ -33,11 +36,11 @@ public class UserServlet extends HttpServlet {
             if (action.equals("edit")) {
                 try {
                     String email = request.getParameter("email");
-                    String role_name = request.getParameter("role");
                     User user = us.get(email);
+                    user_role_id = user.getRole().getRoleId();
                     request.setAttribute("email", email);
                     request.setAttribute("selectedUser", user);
-//                    request.setAttribute("selectedRole", role_name);
+                    request.setAttribute("user_role_id", user_role_id);
                     request.setAttribute("message", "edit");
                     
                 } catch (Exception ex) {
@@ -64,6 +67,8 @@ public class UserServlet extends HttpServlet {
             throws ServletException, IOException {
 //        HttpSession session = request.getSession();
 
+        Role role = null;
+        User user = null;
         UserService us = new UserService();
         RoleService rs = new RoleService();
 
@@ -71,14 +76,19 @@ public class UserServlet extends HttpServlet {
         String first = request.getParameter("first");
         String last = request.getParameter("last");
         String pw = request.getParameter("pw");
-        String id = request.getParameter("role"); //name
-        int user_role_id = 0;
+        String role_name = request.getParameter("role"); //name
+        int id = 0;
 
         String action = request.getParameter("action");
 
         try {
             List<User> users = us.getAll();
             request.setAttribute("users", users);
+            if( role_name.equals("system admin")){
+                id = 1;
+            } else {
+                id = 2;
+            }
             if (email == null || email.equals("") || first == null || first.equals("") || last == null || last.equals("")
                     || pw == null || pw.equals("")) {
                 request.setAttribute("mes", "All fields are required");
@@ -92,11 +102,7 @@ public class UserServlet extends HttpServlet {
             if (action != null) {
                 switch (action) {
                     case "add":
-                        if (id.equals("1")) {
-                            user_role_id = 1;
-                        } else {
-                            user_role_id = 2;
-                        }
+                        
                         //check the email                     
                         for (int i = 0; i < users.size(); i++) {
                             if (email.equals(users.get(i).getEmail())) {
@@ -104,21 +110,21 @@ public class UserServlet extends HttpServlet {
                                 getServletContext().getRequestDispatcher("/WEB-INF/users.jsp").forward(request, response);
                             }
                         }
-                        us.insert(email, first, last, pw, rs.get(user_role_id));
+                        us.insert(email, first, last, pw, rs.get(id));
                         request.setAttribute("message", "add");
                         break;
                     case "update":
-                        if (id.equals("system admin")) {
-                            user_role_id =1 ;
-                        } else{
-                           user_role_id = 2;
-                        }
-                        
-                        us.update(email, first, last, pw, rs.get(user_role_id));
+                        role = rs.get(id);
+                        us.get(email).setRole(role);
+                        us.update(email, first, last, pw, role);
                         request.setAttribute("message", "update");
                         break;
                 }
             }
+        } catch(NullPointerException ex) {
+            Logger.getLogger(UserServlet.class
+             .getName()).log(Level.SEVERE, null, ex);
+             request.setAttribute("message", "error");
         } catch (Exception ex) {
             Logger.getLogger(UserServlet.class
                     .getName()).log(Level.SEVERE, null, ex);
